@@ -9,7 +9,8 @@ const CalendarView = ({
   activeFilters, 
   selectedSeminars, 
   toggleSeminarSelection,
-  checkSeminarConflict  
+  checkSeminarConflict,
+  searchQuery  
 }) => {
   // State for seminar details popup
   const [detailsPopup, setDetailsPopup] = useState(null);
@@ -105,7 +106,41 @@ const CalendarView = ({
     const passesKunskapsnivå = activeFilters.kunskapsnivå.length === 0 || 
       (seminar.metadata?.Kunskapsnivå && activeFilters.kunskapsnivå.includes(seminar.metadata.Kunskapsnivå));
     
-    return passesSpråk && passesÄmne && passesMålgrupp && passesKunskapsnivå;
+    // Apply search query filter
+    const passesSearch = !searchQuery || searchQuery.trim() === '' || (() => {
+      const query = searchQuery.toLowerCase().trim();
+      
+      // Search in title
+      if (seminar.title.toLowerCase().includes(query)) return true;
+      
+      // Search in location
+      if (seminar.location.toLowerCase().includes(query)) return true;
+      
+      // Search in speakers
+      if (seminar.speakers && seminar.speakers.length > 0) {
+        for (const speaker of seminar.speakers) {
+          if (speaker.name && speaker.name.toLowerCase().includes(query)) return true;
+          if (speaker.title && speaker.title.toLowerCase().includes(query)) return true;
+          if (speaker.organization && speaker.organization.toLowerCase().includes(query)) return true;
+        }
+      }
+      
+      // Search in metadata
+      if (seminar.metadata) {
+        for (const [key, value] of Object.entries(seminar.metadata)) {
+          if (typeof value === 'string' && value.toLowerCase().includes(query)) return true;
+          if (Array.isArray(value)) {
+            for (const item of value) {
+              if (typeof item === 'string' && item.toLowerCase().includes(query)) return true;
+            }
+          }
+        }
+      }
+      
+      return false;
+    })();
+    
+    return passesSpråk && passesÄmne && passesMålgrupp && passesKunskapsnivå && passesSearch;
   });
 
   // Calculate the earliest and latest times for the day
@@ -143,6 +178,9 @@ const CalendarView = ({
 
   // Calculate the total number of hours to display
   const totalHours = (dayEnd - dayStart) / 60;
+  
+  // Define pixel height per hour (increased from 90 to 120)
+  const pixelsPerHour = 120;
 
   // Generate hour and half-hour markers
   const timeMarkers = [];
@@ -156,7 +194,7 @@ const CalendarView = ({
       <div 
         key={`time-${hour}-${minute}`} 
         className={`absolute w-full ${isHour ? 'border-t border-gray-300' : 'border-t border-gray-200 border-dashed'}`} 
-        style={{ top: `${minutes}px` }}
+        style={{ top: `${(minutes / 60) * pixelsPerHour}px` }}
       >
         {isHour && (
           <span className="absolute -top-3 -left-2 text-xs text-gray-500">
@@ -180,10 +218,10 @@ const CalendarView = ({
       {/* Fixed time sidebar */}
       <div 
         className="absolute left-0 top-0 bottom-0 bg-white z-10"
-        style={{ width: `${timeSidebarWidth}px`, height: `${totalHours * 60 + 20 + 36}px` }} // 36px for header height
+        style={{ width: `${timeSidebarWidth}px`, height: `${totalHours * pixelsPerHour + 20 + 36}px` }} // 36px for header height
       >
         <div className="h-9"></div> {/* Space for header alignment */}
-        <div className="relative" style={{ height: `${totalHours * 60 + 20}px` }}>
+        <div className="relative" style={{ height: `${totalHours * pixelsPerHour + 20}px` }}>
           {timeMarkers.map((marker, index) => {
             const hour = Math.floor((dayStart + index * 30) / 60);
             const minute = (dayStart + index * 30) % 60;
@@ -193,7 +231,7 @@ const CalendarView = ({
               <div 
                 key={`time-label-${hour}-${minute}`} 
                 className={`absolute w-full ${isHour ? 'border-t border-gray-300' : 'border-t border-gray-200 border-dashed'}`} 
-                style={{ top: `${index * 30}px` }}
+                style={{ top: `${(index * 30 / 60) * pixelsPerHour}px` }}
               >
                 {isHour && (
                   <span className="absolute -top-3 left-1 text-xs text-gray-500">
@@ -231,14 +269,14 @@ const CalendarView = ({
         <div 
           ref={scrollContainerRef}
           className="overflow-x-auto" 
-          style={{ height: `${totalHours * 60 + 20}px` }}
+          style={{ height: `${totalHours * pixelsPerHour + 20}px` }}
         >
           {/* Calendar grid */}
           <div 
             className="grid relative" 
             style={{ 
               gridTemplateColumns: `repeat(${locations.length}, minmax(200px, 1fr))`,
-              backgroundSize: '1px 30px',
+              backgroundSize: `1px ${pixelsPerHour / 2}px`,
               backgroundImage: 'linear-gradient(to bottom, rgba(226, 232, 240, 0.3) 1px, transparent 1px)',
             }}
           >
@@ -252,7 +290,7 @@ const CalendarView = ({
                 <div 
                   key={`grid-time-${hour}-${minute}`} 
                   className={`absolute left-0 right-0 ${isHour ? 'border-t border-gray-300' : 'border-t border-gray-200 border-dashed'}`} 
-                  style={{ top: `${index * 30}px` }}
+                  style={{ top: `${(index * 30 / 60) * pixelsPerHour}px` }}
                 />
               );
             })}
@@ -278,8 +316,8 @@ const CalendarView = ({
                   const duration = endMinutes - startMinutes;
                   
                   // Calculate position
-                  const top = startMinutes - dayStart;
-                  const height = duration;
+                  const top = (startMinutes - dayStart) / 60 * pixelsPerHour;
+                  const height = duration / 60 * pixelsPerHour;
                   
                   // Find the time slot for this seminar (for selection purposes)
                   const timeSlot = parts[1].trim();

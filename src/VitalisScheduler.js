@@ -658,7 +658,8 @@ const VitalisScheduler = () => {
           toggleSeminarSelection={toggleSeminarSelection}
           parseTimeToMinutes={parseTimeToMinutes}
           getSeminarDuration={getSeminarDuration}
-          checkSeminarConflict={checkSeminarConflict}  
+          checkSeminarConflict={checkSeminarConflict}
+          searchQuery={searchQuery}  
         />
       ) : (
         // MY SCHEDULE VIEW - Show only selected seminars

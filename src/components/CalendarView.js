@@ -56,6 +56,17 @@ const CalendarView = ({
     }
   }, [detailsPopup]);
 
+  // Function to get initials from name
+  const getInitials = (name) => {
+    if (!name) return '?';
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
   // Add click event listener to close popup
   useEffect(() => {
     document.addEventListener('click', handleClosePopup);
@@ -145,8 +156,9 @@ const CalendarView = ({
 
   // Calculate the earliest and latest times for the day
   let dayStart = 8 * 60; // Default 08:00
-  let dayEnd = 18 * 60;  // Default 18:00
-
+  
+  // Find the actual end time of the last seminar without rounding
+  let actualEndMinutes = dayStart;
   filteredSeminars.forEach(seminar => {
     const parts = seminar.date_time.split(activeDay);
     if (parts.length < 2) return;
@@ -155,17 +167,18 @@ const CalendarView = ({
     const times = timeStr.match(/(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})/);
     
     if (times) {
-      const startMinutes = parseInt(times[1]) * 60 + parseInt(times[2]);
       const endMinutes = parseInt(times[3]) * 60 + parseInt(times[4]);
-      
-      dayStart = Math.min(dayStart, startMinutes);
-      dayEnd = Math.max(dayEnd, endMinutes);
+      actualEndMinutes = Math.max(actualEndMinutes, endMinutes);
     }
   });
-
-  // Round dayStart down to nearest hour and dayEnd up to nearest hour
-  dayStart = Math.floor(dayStart / 60) * 60;
-  dayEnd = Math.ceil(dayEnd / 60) * 60;
+  
+  // Add only 15 minutes after the last seminar
+  let dayEnd = actualEndMinutes + 15;
+  
+  // Round to the nearest half hour if needed for cleaner display
+  if (dayEnd % 30 !== 0) {
+    dayEnd = Math.ceil(dayEnd / 30) * 30;
+  }
 
   // Get unique locations for column headers
   const locations = _.uniq(filteredSeminars.map(seminar => seminar.location)).sort();
@@ -179,8 +192,8 @@ const CalendarView = ({
   // Calculate the total number of hours to display
   const totalHours = (dayEnd - dayStart) / 60;
   
-  // Define pixel height per hour (increased from 90 to 120)
-  const pixelsPerHour = 120;
+  // Define pixel height per hour (increased for more height in seminars)
+  const pixelsPerHour = 180;
 
   // Generate hour and half-hour markers
   const timeMarkers = [];
@@ -197,12 +210,12 @@ const CalendarView = ({
         style={{ top: `${(minutes / 60) * pixelsPerHour}px` }}
       >
         {isHour && (
-          <span className="absolute -top-3 -left-2 text-xs text-gray-500">
+          <span className="absolute -top-3 -left-2 text-xs text-gray-500 bg-white px-1 z-10">
             {hour.toString().padStart(2, '0')}:00
           </span>
         )}
         {!isHour && (
-          <span className="absolute -top-3 -left-2 text-xs text-gray-400">
+          <span className="absolute -top-3 -left-2 text-xs text-gray-400 bg-white px-1 z-10">
             {hour.toString().padStart(2, '0')}:30
           </span>
         )}
@@ -234,12 +247,12 @@ const CalendarView = ({
                 style={{ top: `${(index * 30 / 60) * pixelsPerHour}px` }}
               >
                 {isHour && (
-                  <span className="absolute -top-3 left-1 text-xs text-gray-500">
+                  <span className="absolute -top-3 left-1 text-xs text-gray-500 bg-white px-1 z-10">
                     {hour.toString().padStart(2, '0')}:00
                   </span>
                 )}
                 {!isHour && (
-                  <span className="absolute -top-3 left-1 text-xs text-gray-400">
+                  <span className="absolute -top-3 left-1 text-xs text-gray-400 bg-white px-1 z-10">
                     {hour.toString().padStart(2, '0')}:30
                   </span>
                 )}
@@ -290,7 +303,11 @@ const CalendarView = ({
                 <div 
                   key={`grid-time-${hour}-${minute}`} 
                   className={`absolute left-0 right-0 ${isHour ? 'border-t border-gray-300' : 'border-t border-gray-200 border-dashed'}`} 
-                  style={{ top: `${(index * 30 / 60) * pixelsPerHour}px` }}
+                  style={{ 
+                    top: `${(index * 30 / 60) * pixelsPerHour}px`,
+                    width: `${locations.length * 200}px`, // Make sure lines extend across all locations
+                    minWidth: '100%' // Ensure it's at least as wide as the container
+                  }}
                 />
               );
             })}
@@ -446,6 +463,44 @@ const CalendarView = ({
                     <div className="flex items-start gap-1 text-sm text-gray-600 mb-1">
                       <Users size={16} className="mt-0.5 flex-shrink-0" />
                       <span className="font-medium">Föreläsare:</span>
+                    </div>
+                    <div className="flex -space-x-2 overflow-hidden ml-6 mb-2">
+                      {detailsPopup.seminar.speakers.slice(0, 3).map((speaker, idx) => (
+                        speaker.name && (
+                          <div key={idx} className="relative z-0" style={{ zIndex: 10 - idx }}>
+                            {speaker.image_url ? (
+                              <img 
+                                src={speaker.image_url} 
+                                alt={speaker.name}
+                                className="w-8 h-8 rounded-full border border-white object-cover"
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.style.display = 'none';
+                                  e.target.nextSibling.style.display = 'flex';
+                                }}
+                              />
+                            ) : null}
+                            <div 
+                              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white ${
+                                !speaker.image_url ? 'flex' : 'hidden'
+                              }`}
+                              style={{ 
+                                backgroundColor: `hsl(${(idx * 60) % 360}, 70%, 60%)`,
+                                display: speaker.image_url ? 'none' : 'flex'
+                              }}
+                            >
+                              {getInitials(speaker.name)}
+                            </div>
+                          </div>
+                        )
+                      ))}
+                      {detailsPopup.seminar.speakers.length > 3 && (
+                        <div 
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white bg-gray-400 border border-white"
+                        >
+                          +{detailsPopup.seminar.speakers.length - 3}
+                        </div>
+                      )}
                     </div>
                     <ul className="pl-6 text-sm text-gray-600">
                       {detailsPopup.seminar.speakers.slice(0, 3).map((speaker, index) => (

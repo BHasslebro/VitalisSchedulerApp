@@ -16,6 +16,17 @@ const ListView = ({
     return match ? match[0] : timeSlot;
   };
   
+  // Function to get initials from name
+  const getInitials = (name) => {
+    if (!name) return '?';
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
+  
   return (
     <div className="space-y-8">
       {timeSlots.map(slot => {
@@ -89,12 +100,52 @@ const ListView = ({
                     </div>
                     
                     {seminar.speakers && seminar.speakers.length > 0 && seminar.speakers[0].name && (
-                      <div className="flex items-start gap-1 text-sm text-gray-600 mb-2">
-                        <Users size={16} className="mt-0.5 flex-shrink-0" />
-                        <span>
-                          {seminar.speakers.slice(0, 2).map(s => s.name).filter(Boolean).join(', ')}
-                          {seminar.speakers.length > 2 && ', ...'}
-                        </span>
+                      <div className="mb-3">
+                        <div className="flex items-start gap-1 text-sm text-gray-600 mb-1">
+                          <Users size={16} className="mt-0.5 flex-shrink-0" />
+                          <span>
+                            {seminar.speakers.slice(0, 2).map(s => s.name).filter(Boolean).join(', ')}
+                            {seminar.speakers.length > 2 && ', ...'}
+                          </span>
+                        </div>
+                        <div className="flex -space-x-2 overflow-hidden ml-5">
+                          {seminar.speakers.slice(0, 3).map((speaker, idx) => (
+                            speaker.name && (
+                              <div key={idx} className="relative z-0" style={{ zIndex: 10 - idx }}>
+                                {speaker.image_url ? (
+                                  <img 
+                                    src={speaker.image_url} 
+                                    alt={speaker.name}
+                                    className="w-8 h-8 rounded-full border border-white object-cover"
+                                    onError={(e) => {
+                                      e.target.onerror = null;
+                                      e.target.style.display = 'none';
+                                      e.target.nextSibling.style.display = 'flex';
+                                    }}
+                                  />
+                                ) : null}
+                                <div 
+                                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white ${
+                                    !speaker.image_url ? 'flex' : 'hidden'
+                                  }`}
+                                  style={{ 
+                                    backgroundColor: `hsl(${(idx * 60) % 360}, 70%, 60%)`,
+                                    display: speaker.image_url ? 'none' : 'flex'
+                                  }}
+                                >
+                                  {getInitials(speaker.name)}
+                                </div>
+                              </div>
+                            )
+                          ))}
+                          {seminar.speakers.length > 3 && (
+                            <div 
+                              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white bg-gray-400 border border-white"
+                            >
+                              +{seminar.speakers.length - 3}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                     

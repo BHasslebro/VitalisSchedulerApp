@@ -216,7 +216,7 @@ const VitalisScheduler = () => {
       updateURL(selectedSeminars, activeFilters, activeDay, viewMode);
       localStorage.setItem('vitalisSelectedSeminars', JSON.stringify(selectedSeminars));
     }
-  }, [selectedSeminars, activeFilters, activeDay, viewMode, loading, searchQuery]);
+  }, [selectedSeminars, activeFilters, activeDay, viewMode, loading, searchQuery, updateURL]);
 
   // Get seminars for a specific time slot
   const getSeminarsForTimeSlot = (timeSlot) => {
@@ -266,7 +266,7 @@ const VitalisScheduler = () => {
         
         // Search in metadata
         if (seminar.metadata) {
-          for (const [key, value] of Object.entries(seminar.metadata)) {
+          for (const [_key, value] of Object.entries(seminar.metadata)) {
             if (typeof value === 'string' && value.toLowerCase().includes(query)) return true;
             if (Array.isArray(value)) {
               for (const item of value) {
@@ -331,7 +331,7 @@ const VitalisScheduler = () => {
           
           // Search in metadata
           if (seminar.metadata) {
-            for (const [key, value] of Object.entries(seminar.metadata)) {
+            for (const [_key, value] of Object.entries(seminar.metadata)) {
               if (typeof value === 'string' && value.toLowerCase().includes(query)) return true;
               if (Array.isArray(value)) {
                 for (const item of value) {
@@ -552,8 +552,8 @@ const VitalisScheduler = () => {
       />
 
       {/* View toggle and filter buttons */}
-      <div className="mb-2 flex items-center justify-between">
-        <div className="flex gap-2">
+      <div className="mb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button 
             onClick={() => setViewMode('list')}
             className={`flex items-center gap-2 py-2 px-4 rounded-lg border ${
@@ -591,7 +591,7 @@ const VitalisScheduler = () => {
         
         <button 
           onClick={() => setShowFilters(!showFilters)}
-          className="flex items-center gap-2 py-2 px-4 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200"
+          className="flex items-center gap-2 py-2 px-4 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 w-full sm:w-auto justify-center sm:justify-start"
           aria-expanded={showFilters}
           aria-controls="filter-panel"
         >

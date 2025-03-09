@@ -1,6 +1,6 @@
 // Calendar View Component
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Check, X, MapPin, Users } from 'lucide-react';
+import { Check, X, MapPin, Users, ChevronDown, ChevronUp } from 'lucide-react';
 import _ from 'lodash';
 
 const CalendarView = ({ 
@@ -13,7 +13,7 @@ const CalendarView = ({
   searchQuery  
 }) => {
   // State for seminar details popup
-  const [detailsPopup, setDetailsPopup] = useState(null);
+  const [expandedSeminarId, setExpandedSeminarId] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
   const scrollContainerRef = useRef(null);
   const headerContainerRef = useRef(null);
@@ -49,12 +49,15 @@ const CalendarView = ({
     }
   }, []);
   
-  // Close details popup when clicking elsewhere
-  const handleClosePopup = useCallback((event) => {
-    if (detailsPopup && !event.target.closest('.seminar-card') && !event.target.closest('.details-popup')) {
-      setDetailsPopup(null);
+  // Function to toggle seminar details expansion
+  const toggleSeminarDetails = (seminarId, event) => {
+    // Prevent the click from propagating to select the seminar
+    if (event) {
+      event.stopPropagation();
     }
-  }, [detailsPopup]);
+    
+    setExpandedSeminarId(prevId => prevId === seminarId ? null : seminarId);
+  };
 
   // Function to get initials from name
   const getInitials = (name) => {
@@ -65,30 +68,6 @@ const CalendarView = ({
       .join('')
       .toUpperCase()
       .substring(0, 2);
-  };
-
-  // Add click event listener to close popup
-  useEffect(() => {
-    document.addEventListener('click', handleClosePopup);
-    return () => {
-      document.removeEventListener('click', handleClosePopup);
-    };
-  }, [handleClosePopup]);
-
-  // Function to handle showing details
-  const handleShowDetails = (seminar, position, event) => {
-    // Prevent the click from propagating to select the seminar
-    if (isMobile) {
-      event.stopPropagation();
-    }
-    
-    if (detailsPopup && detailsPopup.seminar.id === seminar.id) {
-      // If clicking the same seminar, close the popup
-      setDetailsPopup(null);
-    } else {
-      // Otherwise show the popup for this seminar
-      setDetailsPopup({ seminar, position });
-    }
   };
 
   // Early return if no active day is selected
@@ -339,28 +318,30 @@ const CalendarView = ({
                   // Find the time slot for this seminar (for selection purposes)
                   const timeSlot = parts[1].trim();
                   const isSelected = selectedSeminars[timeSlot] === seminar.id;
-                  const isShowingDetails = detailsPopup && detailsPopup.seminar.id === seminar.id;
                   const hasConflict = checkSeminarConflict(seminar);
                   
                   return (
                     <div 
                       key={seminar.id}
-                      className={`seminar-card absolute left-1 right-1 p-2 rounded-md overflow-hidden shadow-sm ${
+                      className={`seminar-card absolute left-1 right-1 p-2 rounded-md shadow-sm ${
                         isSelected 
                           ? 'border-blue-500 bg-blue-50 border' 
                           : hasConflict
                           ? 'border-gray-200 bg-white border opacity-50 cursor-not-allowed'
-                          : isShowingDetails
-                            ? 'border-blue-300 bg-blue-50 border cursor-pointer'
+                          : expandedSeminarId === seminar.id
+                            ? 'border-blue-300 bg-blue-50 border cursor-pointer z-20'
                             : 'border-gray-200 bg-white border hover:border-blue-300 cursor-pointer'
                       }`}
                       style={{ 
                         top: `${top}px`, 
-                        height: `${height}px`,
+                        height: expandedSeminarId === seminar.id ? 'auto' : `${height}px`,
+                        maxHeight: expandedSeminarId === seminar.id ? '400px' : `${height}px`,
+                        overflowY: expandedSeminarId === seminar.id ? 'auto' : 'hidden',
+                        zIndex: expandedSeminarId === seminar.id ? 50 : 10
                       }}
                     >
                       <div 
-                        className="h-full" 
+                        className={expandedSeminarId === seminar.id ? '' : 'h-full'}
                         onClick={() => !hasConflict && toggleSeminarSelection(timeSlot, seminar.id)}
                       >
                         <div className="flex justify-between items-start">
@@ -380,7 +361,7 @@ const CalendarView = ({
                           {times[1]}:{times[2]} - {times[3]}:{times[4]}
                         </div>
                         
-                        {seminar.speakers && seminar.speakers.length > 0 && seminar.speakers[0].name && height > 60 && (
+                        {seminar.speakers && seminar.speakers.length > 0 && height > 60 && expandedSeminarId !== seminar.id && (
                           <div className={`mt-1 text-xs overflow-hidden text-ellipsis whitespace-nowrap ${
                             hasConflict ? 'text-gray-400' : 'text-gray-600'
                           }`}>
@@ -389,7 +370,7 @@ const CalendarView = ({
                           </div>
                         )}
                         
-                        {height > 80 && seminar.metadata?.Språk && (
+                        {height > 80 && seminar.metadata?.Språk && expandedSeminarId !== seminar.id && (
                           <div className="mt-1">
                             <span className={`inline-block px-1 py-0.5 text-xs rounded text-xs ${
                               hasConflict ? 'bg-gray-100 text-gray-400' : 'bg-gray-100'
@@ -402,176 +383,163 @@ const CalendarView = ({
                       
                       {/* Info button for mobile or desktop */}
                       <button
-                        onClick={(e) => handleShowDetails(seminar, { top, left: index * 200 }, e)}
+                        onClick={(e) => toggleSeminarDetails(seminar.id, e)}
                         className={`absolute bottom-1 right-1 w-5 h-5 flex items-center justify-center rounded-full border ${
                           hasConflict 
                             ? 'bg-gray-100 text-gray-400 border-gray-300'
-                            : 'bg-gray-100 text-blue-600 border-blue-300 hover:bg-blue-50'
+                            : expandedSeminarId === seminar.id
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'bg-gray-100 text-blue-600 border-blue-300 hover:bg-blue-50'
                         }`}
                         title={
                           hasConflict 
                             ? "Överlappar med valt seminarium" 
-                            : "Visa detaljer"
+                            : expandedSeminarId === seminar.id
+                              ? "Dölj detaljer"
+                              : "Visa detaljer"
                         }
                         aria-label={
                           hasConflict 
                             ? "Överlappar med valt seminarium" 
-                            : "Visa detaljer"
+                            : expandedSeminarId === seminar.id
+                              ? "Dölj detaljer"
+                              : "Visa detaljer"
                         }
                       >
-                        {isShowingDetails ? (
-                          <X size={10} />
+                        {expandedSeminarId === seminar.id ? (
+                          <ChevronUp size={10} />
                         ) : (
-                          <span className="text-xs font-semibold">i</span>
+                          <ChevronDown size={10} />
                         )}
                       </button>
+                      
+                      {/* Seminar details */}
+                      {expandedSeminarId === seminar.id && (
+                        <div className="mt-2 pt-2 border-t border-gray-200">
+                          <div className="flex items-start gap-1 text-sm text-gray-600 mb-2">
+                            <MapPin size={16} className="mt-0.5 flex-shrink-0" />
+                            <span>{seminar.location}</span>
+                          </div>
+                          
+                          {seminar.speakers && seminar.speakers.length > 0 && (
+                            <div className="mb-2">
+                              <div className="flex items-start gap-1 text-sm text-gray-600 mb-1">
+                                <Users size={16} className="mt-0.5 flex-shrink-0" />
+                                <span className="font-medium">Föreläsare:</span>
+                              </div>
+                              <div className="flex -space-x-2 overflow-hidden ml-6 mb-2">
+                                {seminar.speakers.slice(0, 3).map((speaker, idx) => (
+                                  speaker.name && (
+                                    <div key={idx} className="relative z-0" style={{ zIndex: 10 - idx }}>
+                                      {speaker.image_url ? (
+                                        <img 
+                                          src={speaker.image_url} 
+                                          alt={speaker.name}
+                                          className="w-8 h-8 rounded-full border border-white object-cover"
+                                          onError={(e) => {
+                                            e.target.onerror = null;
+                                            e.target.style.display = 'none';
+                                            e.target.nextSibling.style.display = 'flex';
+                                          }}
+                                        />
+                                      ) : null}
+                                      <div 
+                                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white ${
+                                          !speaker.image_url ? 'flex' : 'hidden'
+                                        }`}
+                                        style={{ 
+                                          backgroundColor: `hsl(${(idx * 60) % 360}, 70%, 60%)`,
+                                          display: speaker.image_url ? 'none' : 'flex'
+                                        }}
+                                      >
+                                        {getInitials(speaker.name)}
+                                      </div>
+                                    </div>
+                                  )
+                                ))}
+                                {seminar.speakers.length > 3 && (
+                                  <div 
+                                    className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white bg-gray-400 border border-white"
+                                  >
+                                    +{seminar.speakers.length - 3}
+                                  </div>
+                                )}
+                              </div>
+                              <ul className="pl-6 text-sm text-gray-600">
+                                {seminar.speakers.slice(0, 3).map((speaker, index) => (
+                                  speaker.name && (
+                                    <li key={index} className="mb-1">
+                                      {speaker.name}
+                                      {speaker.title && ` (${speaker.title})`}
+                                    </li>
+                                  )
+                                ))}
+                                {seminar.speakers.length > 3 && (
+                                  <li>+ {seminar.speakers.length - 3} till...</li>
+                                )}
+                              </ul>
+                            </div>
+                          )}
+                          
+                          {seminar.description && (
+                            <div className="text-sm text-gray-600 mb-2">
+                              <p className="line-clamp-3">{seminar.description}</p>
+                            </div>
+                          )}
+                          
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {seminar.metadata?.Språk && (
+                              <span className="inline-block px-2 py-1 text-xs bg-gray-100 rounded">
+                                {seminar.metadata.Språk}
+                              </span>
+                            )}
+                            
+                            {seminar.metadata?.Ämne && (
+                              <span className="inline-block px-2 py-1 text-xs bg-blue-100 rounded">
+                                {seminar.metadata.Ämne}
+                              </span>
+                            )}
+                            
+                            {seminar.metadata?.Kunskapsnivå && (
+                              <span className="inline-block px-2 py-1 text-xs bg-green-100 rounded">
+                                {seminar.metadata.Kunskapsnivå}
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="mt-4 flex justify-end">
+                            <button
+                              onClick={() => {
+                                const timeSlot = seminar.date_time.split(activeDay)[1].trim();
+                                if (!checkSeminarConflict(seminar) || selectedSeminars[timeSlot] === seminar.id) {
+                                  toggleSeminarSelection(timeSlot, seminar.id);
+                                }
+                                toggleSeminarDetails(seminar.id);
+                              }}
+                              className={`px-3 py-1 rounded-md text-sm ${
+                                selectedSeminars[seminar.date_time.split(activeDay)[1].trim()] === seminar.id
+                                  ? "bg-blue-600 text-white"
+                                  : checkSeminarConflict(seminar)
+                                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                    : "bg-blue-600 text-white"
+                              }`}
+                              disabled={checkSeminarConflict(seminar) && 
+                                selectedSeminars[seminar.date_time.split(activeDay)[1].trim()] !== seminar.id}
+                            >
+                              {selectedSeminars[seminar.date_time.split(activeDay)[1].trim()] === seminar.id
+                                ? "Avmarkera"
+                                : checkSeminarConflict(seminar)
+                                  ? "Tid överlappar med annat valt seminarium"
+                                  : "Lägg till i schema"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
               </div>
             ))}
-            
-            {/* Details popup */}
-            {detailsPopup && (
-              <div 
-                className="details-popup absolute z-10 bg-white p-4 rounded-lg shadow-lg border border-gray-200 w-80"
-                style={{ 
-                  top: `${detailsPopup.position.top + 20}px`, 
-                  left: `${Math.min(detailsPopup.position.left + 100, window.innerWidth - 340)}px`,
-                  maxHeight: '300px',
-                  overflowY: 'auto'
-                }}
-              >
-                <button 
-                  onClick={() => setDetailsPopup(null)}
-                  className="absolute top-2 right-2 p-1 text-gray-500 hover:text-gray-700 rounded-full"
-                  aria-label="Stäng"
-                >
-                  <X size={16} />
-                </button>
-                
-                <h3 className="font-medium text-blue-800 mb-2 pr-6">{detailsPopup.seminar.title}</h3>
-                <p className="text-sm text-gray-600 mb-2">{detailsPopup.seminar.date_time}</p>
-                
-                <div className="flex items-start gap-1 text-sm text-gray-600 mb-2">
-                  <MapPin size={16} className="mt-0.5 flex-shrink-0" />
-                  <span>{detailsPopup.seminar.location}</span>
-                </div>
-                
-                {detailsPopup.seminar.speakers && detailsPopup.seminar.speakers.length > 0 && (
-                  <div className="mb-2">
-                    <div className="flex items-start gap-1 text-sm text-gray-600 mb-1">
-                      <Users size={16} className="mt-0.5 flex-shrink-0" />
-                      <span className="font-medium">Föreläsare:</span>
-                    </div>
-                    <div className="flex -space-x-2 overflow-hidden ml-6 mb-2">
-                      {detailsPopup.seminar.speakers.slice(0, 3).map((speaker, idx) => (
-                        speaker.name && (
-                          <div key={idx} className="relative z-0" style={{ zIndex: 10 - idx }}>
-                            {speaker.image_url ? (
-                              <img 
-                                src={speaker.image_url} 
-                                alt={speaker.name}
-                                className="w-8 h-8 rounded-full border border-white object-cover"
-                                onError={(e) => {
-                                  e.target.onerror = null;
-                                  e.target.style.display = 'none';
-                                  e.target.nextSibling.style.display = 'flex';
-                                }}
-                              />
-                            ) : null}
-                            <div 
-                              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white ${
-                                !speaker.image_url ? 'flex' : 'hidden'
-                              }`}
-                              style={{ 
-                                backgroundColor: `hsl(${(idx * 60) % 360}, 70%, 60%)`,
-                                display: speaker.image_url ? 'none' : 'flex'
-                              }}
-                            >
-                              {getInitials(speaker.name)}
-                            </div>
-                          </div>
-                        )
-                      ))}
-                      {detailsPopup.seminar.speakers.length > 3 && (
-                        <div 
-                          className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white bg-gray-400 border border-white"
-                        >
-                          +{detailsPopup.seminar.speakers.length - 3}
-                        </div>
-                      )}
-                    </div>
-                    <ul className="pl-6 text-sm text-gray-600">
-                      {detailsPopup.seminar.speakers.slice(0, 3).map((speaker, index) => (
-                        speaker.name && (
-                          <li key={index} className="mb-1">
-                            {speaker.name}
-                            {speaker.title && ` (${speaker.title})`}
-                          </li>
-                        )
-                      ))}
-                      {detailsPopup.seminar.speakers.length > 3 && (
-                        <li>+ {detailsPopup.seminar.speakers.length - 3} till...</li>
-                      )}
-                    </ul>
-                  </div>
-                )}
-                
-                {detailsPopup.seminar.description && (
-                  <div className="text-sm text-gray-600 mb-2">
-                    <p className="line-clamp-3">{detailsPopup.seminar.description}</p>
-                  </div>
-                )}
-                
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {detailsPopup.seminar.metadata?.Språk && (
-                    <span className="inline-block px-2 py-1 text-xs bg-gray-100 rounded">
-                      {detailsPopup.seminar.metadata.Språk}
-                    </span>
-                  )}
-                  
-                  {detailsPopup.seminar.metadata?.Ämne && (
-                    <span className="inline-block px-2 py-1 text-xs bg-blue-100 rounded">
-                      {detailsPopup.seminar.metadata.Ämne}
-                    </span>
-                  )}
-                  
-                  {detailsPopup.seminar.metadata?.Kunskapsnivå && (
-                    <span className="inline-block px-2 py-1 text-xs bg-green-100 rounded">
-                      {detailsPopup.seminar.metadata.Kunskapsnivå}
-                    </span>
-                  )}
-                </div>
-                
-                <div className="mt-4 flex justify-end">
-                  <button
-                    onClick={() => {
-                      const timeSlot = detailsPopup.seminar.date_time.split(activeDay)[1].trim();
-                      if (!checkSeminarConflict(detailsPopup.seminar) || selectedSeminars[timeSlot] === detailsPopup.seminar.id) {
-                        toggleSeminarSelection(timeSlot, detailsPopup.seminar.id);
-                      }
-                      setDetailsPopup(null);
-                    }}
-                    className={`px-3 py-1 rounded-md text-sm ${
-                      selectedSeminars[detailsPopup.seminar.date_time.split(activeDay)[1].trim()] === detailsPopup.seminar.id
-                        ? "bg-blue-600 text-white"
-                        : checkSeminarConflict(detailsPopup.seminar)
-                          ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                          : "bg-blue-600 text-white"
-                    }`}
-                    disabled={checkSeminarConflict(detailsPopup.seminar) && 
-                      selectedSeminars[detailsPopup.seminar.date_time.split(activeDay)[1].trim()] !== detailsPopup.seminar.id}
-                  >
-                    {selectedSeminars[detailsPopup.seminar.date_time.split(activeDay)[1].trim()] === detailsPopup.seminar.id
-                      ? "Avmarkera"
-                      : checkSeminarConflict(detailsPopup.seminar)
-                        ? "Tid överlappar med annat valt seminarium"
-                        : "Lägg till i schema"}
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>

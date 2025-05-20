@@ -81,7 +81,7 @@ It correctly bundles React in production mode and optimizes the build for the be
 
 ## State Management
 
-The application uses URL-based state management to allow sharing of seminar selections and filter settings. The state is compressed and stored in the URL hash.
+The application uses URL-based state management to allow sharing of seminar selections and filter settings. The state is compressed and stored in the URL query string.
 
 ## License
 

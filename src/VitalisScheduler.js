@@ -119,15 +119,17 @@ const VitalisScheduler = () => {
     };
     
     const compressed = compressState(state);
-    window.history.replaceState({}, '', `${window.location.pathname}?s=${compressed}`);
+    const encoded = encodeURIComponent(compressed);
+    window.history.replaceState({}, '', `${window.location.pathname}?s=${encoded}`);
   };
 
   // Function to load state from URL
   const loadStateFromURL = () => {
     const params = new URLSearchParams(window.location.search);
-    const compressed = params.get('s');
-    
-    if (compressed) {
+    const encoded = params.get('s');
+
+    if (encoded) {
+      const compressed = decodeURIComponent(encoded);
       const state = decompressState(compressed);
       if (state) {
         setSelectedSeminars(state.selections);

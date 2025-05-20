@@ -1,8 +1,15 @@
 import { render, screen } from '@testing-library/react';
 import App from './App';
 
-test('renders learn react link', () => {
+test('renders main heading', async () => {
+  jest.spyOn(global, 'fetch').mockResolvedValue({
+    text: () => Promise.resolve('[]'),
+  });
+
   render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+
+  const heading = await screen.findByText(/Vitalis 2025 Seminarschema/i);
+  expect(heading).toBeInTheDocument();
+
+  global.fetch.mockRestore();
 });

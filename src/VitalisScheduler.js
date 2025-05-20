@@ -576,7 +576,7 @@ const VitalisScheduler = () => {
             }`}
           >
             <LayoutGrid size={18} />
-            <span>Schemavy</span>
+            <span>Kalendervy</span>
           </button>
           <button 
             onClick={() => setViewMode('mySchedule')}
@@ -669,7 +669,7 @@ const VitalisScheduler = () => {
           {Object.keys(selectedSeminars).length === 0 ? (
             <div className="text-center py-10 bg-gray-50 rounded-lg">
               <p className="text-gray-500">Du har inte valt några seminarier än.</p>
-              <p className="text-sm text-gray-500 mt-2">Använd Listvy eller Schemavy för att välja seminarier.</p>
+              <p className="text-sm text-gray-500 mt-2">Använd Listvy eller Kalendervy för att välja seminarier.</p>
             </div>
           ) : (
             <SelectedSeminarsPanel 
